@@ -1,0 +1,341 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aim on Pump</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        header {
+            background: #333;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+        }
+        nav {
+            background: #444;
+            padding: 1rem;
+        }
+        nav a {
+            color: #fff;
+            margin: 0 1rem;
+            text-decoration: none;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            padding-bottom: 100px; /* Ensure space for footer */
+            min-height: calc(100vh - 200px); /* Allow scrolling */
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #555;
+        }
+        input {
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        footer {
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 1rem;
+            position: relative; /* Changed from fixed to relative */
+            width: 100%;
+        }
+        @media (max-width: 600px) {
+            nav a {
+                display: block;
+                margin: 0.5rem 0;
+            }
+        }
+        #gameCanvas {
+            border: 1px solid #333;
+            background: #f0f0f0;
+            cursor: crosshair;
+        }
+        #gameInfo, #leaderboard {
+            margin-top: 1rem;
+        }
+        #usernameSection {
+            margin-bottom: 1rem;
+        }
+        #usernameInput {
+            width: 150px;
+            margin-right: 0.5rem;
+        }
+        #leaderboardTable {
+            width: 100%;
+            max-width: 500px;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        #leaderboardTable th, #leaderboardTable td {
+            border: 1px solid #333;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        #leaderboardTable th {
+            background: #444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Aim on Pump</h1>
+    </header>
+    <nav>
+        <a href="#home" onclick="showSection('home')">Home</a>
+        <a href="#about" onclick="showSection('about')">AimOnPump</a>
+        <a href="#game" onclick="showSection('game')">Game</a>
+    </nav>
+    <div class="container">
+        <div id="home" class="section active">
+            <h2>Welcome</h2>
+            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. Go to to buy the coin. Only holders of the coin can get airdrops from leaderboard wins</p>
+        </div>
+        <div id="about" class="section">
+            <h2>AimOnPump</h2>
+            <p>AimOnPump is an easy user friendly website connected to $aimpump. The top 25 users on the leaderboard every 24 hours will get an airdrop of the token, amount based on position on leaderboard and MC of coin at the time. Community can vote on these percentages once we have gotten things going.</p>
+        </div>
+        <div id="game" class="section">
+            <h2>Click the Target Game</h2>
+            <div id="usernameSection">
+                <p>Enter your username to play:</p>
+                <input type="text" id="usernameInput" placeholder="Your Username" maxlength="20" required>
+                <button id="submitUsername">Submit</button>
+            </div>
+            <p>Click the red target to score points before the 30-second timer runs out!</p>
+            <canvas id="gameCanvas" width="500" height="300"></canvas>
+            <p id="gameInfo">Score: 0 | Time: 30s</p>
+            <button id="startGameButton" disabled>Start Game</button>
+            <h3>Leaderboard (Top 25)</h3>
+            <table id="leaderboardTable">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Username</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2025 Aim on Pump. All rights reserved.</p>
+    </footer>
+    <script>
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(sectionId).classList.add('active');
+            if (sectionId === 'game') {
+                initGame();
+            }
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startGameButton');
+        const gameInfo = document.getElementById('gameInfo');
+        const usernameInput = document.getElementById('usernameInput');
+        const submitUsernameButton = document.getElementById('submitUsername');
+        const usernameSection = document.getElementById('usernameSection');
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        let score = 0;
+        let timeLeft = 30;
+        let gameActive = false;
+        let target = { x: 0, y: 0, radius: 20 };
+        let gameInterval;
+        let username = '';
+
+        function initGame() {
+            username = localStorage.getItem('username') || '';
+            if (username) {
+                usernameSection.style.display = 'none';
+                startButton.disabled = false;
+                gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+            } else {
+                usernameSection.style.display = 'block';
+                startButton.disabled = true;
+                gameInfo.textContent = 'Enter a username to start playing.';
+            }
+            resetGame();
+            updateLeaderboard();
+        }
+
+        function saveUsername() {
+            username = usernameInput.value.trim();
+            if (username) {
+                localStorage.setItem('username', username);
+                usernameSection.style.display = 'none';
+                startButton.disabled = false;
+                gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+            } else {
+                gameInfo.textContent = 'Please enter a valid username.';
+            }
+        }
+
+        function resetGame() {
+            score = 0;
+            timeLeft = 30;
+            gameActive = false;
+            clearInterval(gameInterval);
+            gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+            startButton.textContent = 'Start Game';
+            startButton.disabled = !username;
+            clearCanvas();
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawTarget() {
+            clearCanvas();
+            ctx.beginPath();
+            ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function moveTarget() {
+            target.x = Math.random() * (canvas.width - 2 * target.radius) + target.radius;
+            target.y = Math.random() * (canvas.height - 2 * target.radius) + target.radius;
+            drawTarget();
+        }
+
+        function startGame() {
+            if (gameActive || !username) return;
+            gameActive = true;
+            score = 0;
+            timeLeft = 30;
+            gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+            startButton.textContent = 'Game Running';
+            startButton.disabled = true;
+            moveTarget();
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+                if (timeLeft <= 0) {
+                    gameActive = false;
+                    clearInterval(gameInterval);
+                    saveScore();
+                    gameInfo.textContent = `Game Over! Final Score: ${score} | Player: ${username}`;
+                    startButton.textContent = 'Restart Game';
+                    startButton.disabled = false;
+                    clearCanvas();
+                    updateLeaderboard();
+                }
+            }, 1000);
+        }
+
+        function saveScore() {
+            let scores = JSON.parse(localStorage.getItem('scores') || '[]');
+            scores.push({ username, score });
+            scores.sort((a, b) => b.score - a.score);
+            scores = scores.slice(0, 25); // Keep only top 25
+            localStorage.setItem('scores', JSON.stringify(scores));
+        }
+
+        function updateLeaderboard() {
+            const scores = JSON.parse(localStorage.getItem('scores') || '[]');
+            leaderboardBody.innerHTML = '';
+            scores.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${index + 1}</td><td>${entry.username}</td><td>${entry.score}</td>`;
+                leaderboardBody.appendChild(row);
+            });
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            const distance = Math.sqrt((clickX - target.x) ** 2 + (clickY - target.y) ** 2);
+            if (distance <= target.radius) {
+                score++;
+                gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
+                moveTarget();
+            }
+        });
+
+        startButton.addEventListener('click', startGame);
+        submitUsernameButton.addEventListener('click', saveUsername);
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveUsername();
+            }
+        });
+
+        // Show home section by default
+        showSection('home');
+    </script>
+</body>
+</html>
