@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Website</title>
+    <title>Aim on Pump</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -61,7 +64,7 @@
             color: #fff;
             text-align: center;
             padding: 1rem;
-            position: relative; /* Changed from fixed to relative */
+            position: relative;
             width: 100%;
         }
         @media (max-width: 600px) {
@@ -85,6 +88,21 @@
             width: 150px;
             margin-right: 0.5rem;
         }
+        #walletSection {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        #walletAddressInput {
+            width: 300px;
+            margin-right: 0.5rem;
+        }
+        #tokenBalance {
+            font-weight: bold;
+            color: #00ff00;
+        }
         #leaderboardTable {
             width: 100%;
             max-width: 500px;
@@ -100,11 +118,24 @@
             background: #444;
             color: #fff;
         }
+        .countdown {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: #ff00ff; /* Neon pink for Y2K vibe */
+            background: #000;
+            padding: 0.5rem 1rem;
+            border: 2px solid #00ff00; /* Neon green border */
+            border-radius: 5px;
+            text-align: center;
+            margin: 1rem 0;
+            text-shadow: 0 0 5px #ff00ff, 0 0 10px #00ff00; /* Glow effect */
+            box-shadow: 0 0 10px #ff00ff;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>My Simple Website</h1>
+        <h1>Aim on Pump</h1>
     </header>
     <nav>
         <a href="#home" onclick="showSection('home')">Home</a>
@@ -114,11 +145,12 @@
     <div class="container">
         <div id="home" class="section active">
             <h2>Welcome</h2>
-            <p>This is a simple website with basic functionality. Use the navigation bar to explore different sections, including a fun target-clicking game with a leaderboard!</p>
+            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. Go to to buy the coin. Only holders of the coin can get airdrops from leaderboard wins</p>
         </div>
         <div id="about" class="section">
             <h2>AimOnPump</h2>
             <p>AimOnPump is an easy user friendly website connected to $aimpump. The top 25 users on the leaderboard every 24 hours will get an airdrop of the token, amount based on position on leaderboard and MC of coin at the time. Community can vote on these percentages once we have gotten things going.</p>
+            <div id="aboutCountdown" class="countdown">Airdrop in: 24:00:00</div>
         </div>
         <div id="game" class="section">
             <h2>Click the Target Game</h2>
@@ -127,7 +159,15 @@
                 <input type="text" id="usernameInput" placeholder="Your Username" maxlength="20" required>
                 <button id="submitUsername">Submit</button>
             </div>
+            <div id="walletSection">
+                <p>Connect your Solana wallet to check $aimpump holdings (required for airdrops):</p>
+                <button id="connectWallet">Connect Wallet</button>
+                <p>Or paste wallet address: <input type="text" id="walletAddressInput" placeholder="Enter Solana address"></p>
+                <button id="checkManualWallet">Check Holdings</button>
+                <p id="tokenBalance"></p>
+            </div>
             <p>Click the red target to score points before the 30-second timer runs out!</p>
+            <div id="gameCountdown" class="countdown">Airdrop in: 24:00:00</div>
             <canvas id="gameCanvas" width="500" height="300"></canvas>
             <p id="gameInfo">Score: 0 | Time: 30s</p>
             <button id="startGameButton" disabled>Start Game</button>
@@ -145,9 +185,13 @@
         </div>
     </div>
     <footer>
-        <p>&copy; 2025 My Simple Website. All rights reserved.</p>
+        <p>&copy; 2025 Aim on Pump. All rights reserved.</p>
     </footer>
     <script>
+        // $aimpump token mint address from pump.fun
+        const TOKEN_MINT = 'Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJXpump';
+        const TOKEN_DECIMALS = 9; // Standard for pump.fun tokens; confirm with pump.fun or Solana Explorer
+
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
@@ -158,6 +202,112 @@
             }
         }
 
+        // Countdown Timer Logic
+        function startCountdown() {
+            const aboutCountdown = document.getElementById('aboutCountdown');
+            const gameCountdown = document.getElementById('gameCountdown');
+            const oneDayInMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+            let startTime = localStorage.getItem('countdownStart');
+            if (!startTime) {
+                startTime = Date.now();
+                localStorage.setItem('countdownStart', startTime);
+            }
+            startTime = parseInt(startTime);
+
+            function updateTimer() {
+                const now = Date.now();
+                const elapsed = now - startTime;
+                const timeLeft = Math.max(0, oneDayInMs - (elapsed % oneDayInMs));
+                if (timeLeft === 0) {
+                    startTime = now;
+                    localStorage.setItem('countdownStart', startTime);
+                }
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                const timeString = `Airdrop in: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                if (aboutCountdown) aboutCountdown.textContent = timeString;
+                if (gameCountdown) gameCountdown.textContent = timeString;
+            }
+
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+
+        // Wallet Scanner Logic
+        let walletPublicKey = null;
+        let tokenBalance = 0;
+
+        async function connectWallet() {
+            const tokenBalanceElement = document.getElementById('tokenBalance');
+            tokenBalanceElement.textContent = 'Connecting...';
+            if ('solana' in window) {
+                try {
+                    const response = await window.solana.connect();
+                    walletPublicKey = response.publicKey.toString();
+                    document.getElementById('connectWallet').textContent = `Connected: ${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)}`;
+                    await checkTokenBalance(walletPublicKey);
+                } catch (err) {
+                    console.error('Wallet connection failed:', err);
+                    tokenBalanceElement.textContent = 'Failed to connect wallet. Try again.';
+                }
+            } else {
+                tokenBalanceElement.textContent = 'Solana wallet not found! Install Phantom or Solflare.';
+                alert('Please install a Solana wallet like Phantom or Solflare.');
+            }
+        }
+
+        async function checkManualWallet() {
+            const tokenBalanceElement = document.getElementById('tokenBalance');
+            const address = document.getElementById('walletAddressInput').value.trim();
+            if (!address) {
+                tokenBalanceElement.textContent = 'Enter a wallet address.';
+                return;
+            }
+            try {
+                const publicKey = new window.solanaWeb3.PublicKey(address);
+                if (!window.solanaWeb3.PublicKey.isOnCurve(publicKey.toBuffer())) {
+                    tokenBalanceElement.textContent = 'Invalid Solana address.';
+                    return;
+                }
+                walletPublicKey = address;
+                tokenBalanceElement.textContent = 'Checking balance...';
+                await checkTokenBalance(address);
+            } catch (err) {
+                console.error('Invalid address:', err);
+                tokenBalanceElement.textContent = 'Invalid Solana address.';
+            }
+        }
+
+        async function checkTokenBalance(address) {
+            const tokenBalanceElement = document.getElementById('tokenBalance');
+            try {
+                const connection = new window.solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+                const mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
+                const ownerPublicKey = new window.solanaWeb3.PublicKey(address);
+                const tokenAccountPublicKey = window.splToken.getAssociatedTokenAddressSync(mintPublicKey, ownerPublicKey);
+
+                const tokenAccountInfo = await connection.getAccountInfo(tokenAccountPublicKey);
+                if (!tokenAccountInfo) {
+                    tokenBalance = 0;
+                    tokenBalanceElement.textContent = 'Holdings: 0 $aimpump (Not eligible for airdrop)';
+                    return;
+                }
+
+                const tokenAccount = await window.splToken.getAccount(connection, tokenAccountPublicKey, 'confirmed');
+                tokenBalance = Number(tokenAccount.amount) / Math.pow(10, TOKEN_DECIMALS); // Convert from lamports
+                tokenBalanceElement.textContent = `Holdings: ${tokenBalance} $aimpump (Eligible for airdrop!)`;
+                if (tokenBalance > 0 && username) {
+                    document.getElementById('startGameButton').disabled = false;
+                }
+            } catch (err) {
+                console.error('Balance check failed:', err);
+                tokenBalanceElement.textContent = 'Error checking holdings. Try again or use a different RPC.';
+            }
+        }
+
+        // Game Logic
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const startButton = document.getElementById('startGameButton');
@@ -177,7 +327,7 @@
             username = localStorage.getItem('username') || '';
             if (username) {
                 usernameSection.style.display = 'none';
-                startButton.disabled = false;
+                startButton.disabled = tokenBalance === 0;
                 gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
             } else {
                 usernameSection.style.display = 'block';
@@ -193,7 +343,7 @@
             if (username) {
                 localStorage.setItem('username', username);
                 usernameSection.style.display = 'none';
-                startButton.disabled = false;
+                startButton.disabled = tokenBalance === 0;
                 gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
             } else {
                 gameInfo.textContent = 'Please enter a valid username.';
@@ -207,7 +357,7 @@
             clearInterval(gameInterval);
             gameInfo.textContent = `Score: ${score} | Time: ${timeLeft}s | Player: ${username}`;
             startButton.textContent = 'Start Game';
-            startButton.disabled = !username;
+            startButton.disabled = !username || tokenBalance === 0;
             clearCanvas();
         }
 
@@ -231,7 +381,7 @@
         }
 
         function startGame() {
-            if (gameActive || !username) return;
+            if (gameActive || !username || tokenBalance === 0) return;
             gameActive = true;
             score = 0;
             timeLeft = 30;
@@ -245,7 +395,7 @@
                 if (timeLeft <= 0) {
                     gameActive = false;
                     clearInterval(gameInterval);
-                    saveScore();
+                    if (tokenBalance > 0) saveScore();
                     gameInfo.textContent = `Game Over! Final Score: ${score} | Player: ${username}`;
                     startButton.textContent = 'Restart Game';
                     startButton.disabled = false;
@@ -259,7 +409,7 @@
             let scores = JSON.parse(localStorage.getItem('scores') || '[]');
             scores.push({ username, score });
             scores.sort((a, b) => b.score - a.score);
-            scores = scores.slice(0, 25); // Keep only top 25
+            scores = scores.slice(0, 25);
             localStorage.setItem('scores', JSON.stringify(scores));
         }
 
@@ -286,6 +436,7 @@
             }
         });
 
+        // Event Listeners
         startButton.addEventListener('click', startGame);
         submitUsernameButton.addEventListener('click', saveUsername);
         usernameInput.addEventListener('keypress', (e) => {
@@ -294,6 +445,11 @@
                 saveUsername();
             }
         });
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('checkManualWallet').addEventListener('click', checkManualWallet);
+
+        // Start countdown timer
+        startCountdown();
 
         // Show home section by default
         showSection('home');
