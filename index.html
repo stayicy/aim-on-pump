@@ -145,7 +145,7 @@
     <div class="container">
         <div id="home" class="section active">
             <h2>Welcome</h2>
-            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. <a href="https://pump.fun/coin/Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJXpump">Buy $aimpump</a>. Only holders of the coin can get airdrops from leaderboard wins.</p>
+            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. Go to to buy the coin. Only holders of the coin can get airdrops from leaderboard wins</p>
         </div>
         <div id="about" class="section">
             <h2>AimOnPump</h2>
@@ -188,9 +188,9 @@
         <p>&copy; 2025 Aim on Pump. All rights reserved.</p>
     </footer>
     <script>
-        // Temporary USDC mint for testing; REPLACE with your $aimpump mint address (44 characters) from pump.fun
-        const TOKEN_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-        const TOKEN_DECIMALS = 6; // USDC uses 6 decimals; confirm $aimpump decimals on pump.fun or Solana Explorer
+        // $aimpump token mint address from pump.fun
+        const TOKEN_MINT = 'Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJXpump';
+        const TOKEN_DECIMALS = 9; // Standard for pump.fun tokens; confirm with pump.fun or Solana Explorer
 
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
@@ -247,10 +247,9 @@
                     const response = await window.solana.connect();
                     walletPublicKey = response.publicKey.toString();
                     document.getElementById('connectWallet').textContent = `Connected: ${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)}`;
-                    console.log('Connected wallet:', walletPublicKey);
                     await checkTokenBalance(walletPublicKey);
                 } catch (err) {
-                    console.error('Wallet connection failed:', err.message);
+                    console.error('Wallet connection failed:', err);
                     tokenBalanceElement.textContent = 'Failed to connect wallet. Try again.';
                 }
             } else {
@@ -270,15 +269,13 @@
                 const publicKey = new window.solanaWeb3.PublicKey(address);
                 if (!window.solanaWeb3.PublicKey.isOnCurve(publicKey.toBuffer())) {
                     tokenBalanceElement.textContent = 'Invalid Solana address.';
-                    console.log('Invalid address provided:', address);
                     return;
                 }
                 walletPublicKey = address;
                 tokenBalanceElement.textContent = 'Checking balance...';
-                console.log('Checking balance for:', walletPublicKey);
                 await checkTokenBalance(address);
             } catch (err) {
-                console.error('Invalid address:', err.message);
+                console.error('Invalid address:', err);
                 tokenBalanceElement.textContent = 'Invalid Solana address.';
             }
         }
@@ -286,36 +283,21 @@
         async function checkTokenBalance(address) {
             const tokenBalanceElement = document.getElementById('tokenBalance');
             try {
-                // Replace with QuickNode endpoint for reliability (get free tier at quicknode.com)
                 const connection = new window.solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-                console.log('Connecting to RPC:', connection.rpcEndpoint);
-                let mintPublicKey;
-                try {
-                    mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
-                    console.log('Mint address:', TOKEN_MINT);
-                } catch (err) {
-                    console.error('Invalid mint address:', err.message);
-                    tokenBalanceElement.textContent = 'Error: Invalid token mint address. Contact support.';
-                    return;
-                }
+                const mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
                 const ownerPublicKey = new window.solanaWeb3.PublicKey(address);
-                console.log('Owner address:', address);
                 const tokenAccountPublicKey = window.splToken.getAssociatedTokenAddressSync(mintPublicKey, ownerPublicKey);
-                console.log('ATA:', tokenAccountPublicKey.toString());
 
                 const tokenAccountInfo = await connection.getAccountInfo(tokenAccountPublicKey);
                 if (!tokenAccountInfo) {
                     tokenBalance = 0;
                     tokenBalanceElement.textContent = 'Holdings: 0 $aimpump (Not eligible for airdrop)';
-                    console.log('No ATA found for this wallet and mint.');
                     return;
                 }
 
                 const tokenAccount = await window.splToken.getAccount(connection, tokenAccountPublicKey, 'confirmed');
-                console.log('Token account data:', tokenAccount);
                 tokenBalance = Number(tokenAccount.amount) / Math.pow(10, TOKEN_DECIMALS); // Convert from lamports
                 tokenBalanceElement.textContent = `Holdings: ${tokenBalance} $aimpump (Eligible for airdrop!)`;
-                console.log('Balance retrieved:', tokenBalance);
                 if (tokenBalance > 0 && username) {
                     document.getElementById('startGameButton').disabled = false;
                 }
