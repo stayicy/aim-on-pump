@@ -190,7 +190,7 @@
     <script>
         // $aimpump token mint address from pump.fun
         const TOKEN_MINT = 'Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJX';
-        const TOKEN_DECIMALS = 9; // Standard for pump.fun tokens; confirm with pump.fun or Solana Explorer
+        const TOKEN_DECIMALS = 9; // Confirm with pump.fun or Solana Explorer
 
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
@@ -247,6 +247,7 @@
                     const response = await window.solana.connect();
                     walletPublicKey = response.publicKey.toString();
                     document.getElementById('connectWallet').textContent = `Connected: ${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)}`;
+                    console.log('Connected wallet:', walletPublicKey);
                     await checkTokenBalance(walletPublicKey);
                 } catch (err) {
                     console.error('Wallet connection failed:', err);
@@ -269,10 +270,12 @@
                 const publicKey = new window.solanaWeb3.PublicKey(address);
                 if (!window.solanaWeb3.PublicKey.isOnCurve(publicKey.toBuffer())) {
                     tokenBalanceElement.textContent = 'Invalid Solana address.';
+                    console.log('Invalid address provided:', address);
                     return;
                 }
                 walletPublicKey = address;
                 tokenBalanceElement.textContent = 'Checking balance...';
+                console.log('Checking balance for:', walletPublicKey);
                 await checkTokenBalance(address);
             } catch (err) {
                 console.error('Invalid address:', err);
@@ -283,27 +286,35 @@
         async function checkTokenBalance(address) {
             const tokenBalanceElement = document.getElementById('tokenBalance');
             try {
+                // Use QuickNode or similar for reliability; replace with your own endpoint
                 const connection = new window.solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+                console.log('Connecting to RPC:', connection.rpcEndpoint);
                 const mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
+                console.log('Mint address:', TOKEN_MINT);
                 const ownerPublicKey = new window.solanaWeb3.PublicKey(address);
+                console.log('Owner address:', address);
                 const tokenAccountPublicKey = window.splToken.getAssociatedTokenAddressSync(mintPublicKey, ownerPublicKey);
+                console.log('ATA:', tokenAccountPublicKey.toString());
 
                 const tokenAccountInfo = await connection.getAccountInfo(tokenAccountPublicKey);
                 if (!tokenAccountInfo) {
                     tokenBalance = 0;
                     tokenBalanceElement.textContent = 'Holdings: 0 $aimpump (Not eligible for airdrop)';
+                    console.log('No ATA found for this wallet and mint.');
                     return;
                 }
 
                 const tokenAccount = await window.splToken.getAccount(connection, tokenAccountPublicKey, 'confirmed');
+                console.log('Token account data:', tokenAccount);
                 tokenBalance = Number(tokenAccount.amount) / Math.pow(10, TOKEN_DECIMALS); // Convert from lamports
                 tokenBalanceElement.textContent = `Holdings: ${tokenBalance} $aimpump (Eligible for airdrop!)`;
+                console.log('Balance retrieved:', tokenBalance);
                 if (tokenBalance > 0 && username) {
                     document.getElementById('startGameButton').disabled = false;
                 }
             } catch (err) {
-                console.error('Balance check failed:', err);
-                tokenBalanceElement.textContent = 'Error checking holdings. Try again or use a different RPC.';
+                console.error('Balance check failed:', err.message);
+                tokenBalanceElement.textContent = `Error checking holdings: ${err.message}. Try again or use a different RPC.`;
             }
         }
 
