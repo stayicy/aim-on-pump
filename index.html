@@ -145,7 +145,7 @@
     <div class="container">
         <div id="home" class="section active">
             <h2>Welcome</h2>
-            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. Go to to buy the coin. Only holders of the coin can get airdrops from leaderboard wins</p>
+            <p>Easy to play game tied to an easy to buy token on pump.fun, leaderboard for game on same page as the game. <a href="https://pump.fun/coin/Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJXpump">Buy $aimpump</a>. Only holders of the coin can get airdrops from leaderboard wins.</p>
         </div>
         <div id="about" class="section">
             <h2>AimOnPump</h2>
@@ -188,9 +188,9 @@
         <p>&copy; 2025 Aim on Pump. All rights reserved.</p>
     </footer>
     <script>
-        // $aimpump token mint address from pump.fun
-        const TOKEN_MINT = 'Cha8KT6YaskftXfiSeUqGQsqKeoFU6nhqzwQsLJX';
-        const TOKEN_DECIMALS = 9; // Confirm with pump.fun or Solana Explorer
+        // Temporary USDC mint for testing; REPLACE with your $aimpump mint address (44 characters) from pump.fun
+        const TOKEN_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+        const TOKEN_DECIMALS = 6; // USDC uses 6 decimals; confirm $aimpump decimals on pump.fun or Solana Explorer
 
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(section => {
@@ -250,7 +250,7 @@
                     console.log('Connected wallet:', walletPublicKey);
                     await checkTokenBalance(walletPublicKey);
                 } catch (err) {
-                    console.error('Wallet connection failed:', err);
+                    console.error('Wallet connection failed:', err.message);
                     tokenBalanceElement.textContent = 'Failed to connect wallet. Try again.';
                 }
             } else {
@@ -278,7 +278,7 @@
                 console.log('Checking balance for:', walletPublicKey);
                 await checkTokenBalance(address);
             } catch (err) {
-                console.error('Invalid address:', err);
+                console.error('Invalid address:', err.message);
                 tokenBalanceElement.textContent = 'Invalid Solana address.';
             }
         }
@@ -286,11 +286,18 @@
         async function checkTokenBalance(address) {
             const tokenBalanceElement = document.getElementById('tokenBalance');
             try {
-                // Use QuickNode or similar for reliability; replace with your own endpoint
+                // Replace with QuickNode endpoint for reliability (get free tier at quicknode.com)
                 const connection = new window.solanaWeb3.Connection('https://api.mainnet-beta.solana.com', 'confirmed');
                 console.log('Connecting to RPC:', connection.rpcEndpoint);
-                const mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
-                console.log('Mint address:', TOKEN_MINT);
+                let mintPublicKey;
+                try {
+                    mintPublicKey = new window.solanaWeb3.PublicKey(TOKEN_MINT);
+                    console.log('Mint address:', TOKEN_MINT);
+                } catch (err) {
+                    console.error('Invalid mint address:', err.message);
+                    tokenBalanceElement.textContent = 'Error: Invalid token mint address. Contact support.';
+                    return;
+                }
                 const ownerPublicKey = new window.solanaWeb3.PublicKey(address);
                 console.log('Owner address:', address);
                 const tokenAccountPublicKey = window.splToken.getAssociatedTokenAddressSync(mintPublicKey, ownerPublicKey);
